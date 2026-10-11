@@ -1,0 +1,652 @@
+<title>Blink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: icon rail | list pane | main (chat, snap editor or story hint). Bottom nav and one pane at a time under 820px. */
+:root{
+  --bg:#070707; --surface:#121110; --surface2:#1c1a16; --ink:#f6efd9; --muted:#9a8e6c; --line:#2e2919;
+  --accent:#d4af37; --accent-ink:#0a0802; --snap:#f2d675; --mine:#d4af37; --mine-ink:#0a0802; --them:#1c1a16;
+  --shadow:0 1px 0 rgba(212,175,55,.08);
+  --display:'Cormorant Garamond',Georgia,serif; --body:'Figtree','Segoe UI',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.4;overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{display:block}
+.app{height:100%;display:grid;grid-template-columns:72px 340px minmax(0,1fr);max-width:1400px;margin-inline:auto;background:var(--surface)}
+.rail{background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0;border-right:1px solid var(--line)}
+.logo{font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.04em;margin-bottom:14px;color:var(--accent)}
+.nav{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:var(--muted);position:relative}
+.nav:hover{background:var(--surface2)}
+.nav[aria-current="true"]{background:var(--accent);color:var(--accent-ink)}
+.nav .dot{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:3px;background:var(--snap);border:2px solid var(--bg)}
+.pane{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--surface)}
+.pane h1{font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0}
+.panehead{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px}
+.search{margin:4px 16px 10px;display:flex}
+.search input{width:100%;background:var(--surface2);border:1px solid transparent;border-radius:12px;padding:10px 14px}
+.search input::placeholder{color:var(--muted)}
+.list{overflow-y:auto;flex:1;min-height:0;padding:0 8px 12px}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 8px;border-radius:14px}
+.row:hover{background:var(--surface2)}
+.row[aria-current="true"]{background:var(--surface2)}
+.row .mid{flex:1;min-width:0}
+.row .t1{display:flex;gap:8px;justify-content:space-between;align-items:baseline}
+.row .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .time{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .t2{display:flex;gap:8px;justify-content:space-between;align-items:center}
+.row .prev{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.row .prev.snapnew{color:var(--snap);font-weight:600}
+.badge{background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:600;min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;padding:0 6px}
+.badge.sq{background:var(--snap);color:#fff;border-radius:5px;min-width:16px;width:16px;height:16px;padding:0}
+.av{flex:none;display:grid;place-items:center;color:#fff;font-family:var(--display);font-weight:800;border-radius:50%}
+.av.channel{border-radius:32%}
+.ring{padding:3px;border-radius:50%;background:var(--line);flex:none}
+.ring.new{background:conic-gradient(var(--accent),var(--snap),var(--accent))}
+.ring .in{padding:2px;background:var(--surface);border-radius:50%}
+.sec{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 12px 4px;font-weight:600}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg)}
+.view{display:flex;flex-direction:column;flex:1;min-height:0}
+.chead{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.chead .who{flex:1;min-width:0}
+.chead .who b{font-family:var(--display);font-size:17px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chead .who span{font-size:13px;color:var(--muted)}
+.chead .who span.typing{color:var(--accent)}
+.ib{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--muted);flex:none}
+.ib:hover{background:var(--surface2);color:var(--ink)}
+.pill{font-size:13px;font-weight:600;border-radius:999px;padding:7px 12px;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.pill.on{background:var(--accent);color:var(--accent-ink)}
+.back{display:none}
+.msgs{flex:1;min-height:0;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:3px}
+.day{align-self:center;font-size:12px;color:var(--muted);background:var(--surface);border-radius:999px;padding:3px 12px;margin:6px 0 10px}
+.m{max-width:min(520px,82%);display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.m.me{align-self:flex-end;align-items:flex-end}
+.m.them{align-self:flex-start}
+.m.post{max-width:min(560px,94%)}
+.bub{background:var(--them);padding:8px 12px;border-radius:16px 16px 16px 5px;box-shadow:var(--shadow);overflow-wrap:anywhere;text-align:left;cursor:pointer}
+.me .bub{background:var(--mine);color:var(--mine-ink);border-radius:16px 16px 5px 16px}
+.sender{font-size:12px;font-weight:600;padding-left:4px}
+.meta{font-size:11px;color:var(--muted);padding:0 4px;display:flex;gap:6px;font-variant-numeric:tabular-nums}
+.meta .v{color:var(--snap)}
+.quote{border-left:3px solid var(--accent);padding:2px 8px;margin-bottom:4px;font-size:13px;opacity:.85;background:rgba(127,127,160,.14);border-radius:4px}
+.me .quote{border-color:#fff}
+.pic{display:block;max-width:100%;max-height:300px;border-radius:12px;cursor:zoom-in}
+.react{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:0 7px;font-size:13px;margin-top:-6px;z-index:1}
+.me .react{align-self:flex-end}
+.snapcard{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);border:1px solid var(--line);text-align:left}
+.snapcard .sq{width:22px;height:22px;border-radius:6px;background:var(--snap);flex:none}
+.snapcard.opened .sq{background:none;border:2px solid var(--muted)}
+.snapcard.opened{color:var(--muted)}
+.snapcard.mine .sq{background:none;border:2px solid var(--accent)}
+.snapcard b{display:block;font-size:14px}
+.snapcard small{color:var(--muted);font-size:12px}
+.acts{display:flex;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;box-shadow:0 4px 14px rgba(20,23,43,.12);margin-top:4px}
+.acts button{padding:5px 9px;border-radius:9px;font-size:13px;font-weight:500}
+.acts button:hover{background:var(--surface2)}
+.composer{background:var(--surface);border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.cbar{display:flex;gap:8px;align-items:center}
+.cbar input[type=text]{flex:1;min-width:0;background:var(--surface2);border:1px solid transparent;border-radius:22px;padding:11px 16px}
+.send{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.send:disabled{opacity:.4;cursor:default}
+.replying{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);border-left:3px solid var(--accent);padding-left:8px}
+.replying span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro{text-align:center;color:var(--muted);padding:14px;background:var(--surface);border-top:1px solid var(--line);font-size:14px}
+.hint{flex:1;display:grid;place-items:center;padding:24px;text-align:center}
+.hint div{max-width:340px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.hint h2{font-family:var(--display);font-size:26px;margin:0;letter-spacing:-.02em}
+.hint p{margin:0;color:var(--muted)}
+.btn{background:var(--accent);color:var(--accent-ink);font-weight:600;padding:11px 20px;border-radius:12px}
+.btn.alt{background:var(--surface2);color:var(--ink)}
+.btn:disabled{opacity:.4;cursor:default}
+/* snap editor */
+.snapview{flex-direction:row;gap:20px;padding:18px;align-items:stretch;overflow:hidden}
+.stage{flex:1;min-width:0;min-height:0;display:flex;justify-content:center}
+.stage canvas{height:100%;max-width:100%;aspect-ratio:9/16;border-radius:20px;touch-action:none;background:#222;box-shadow:0 8px 30px rgba(20,23,43,.25)}
+.tools{width:260px;flex:none;display:flex;flex-direction:column;gap:14px;overflow-y:auto;min-height:0}
+.tools h3{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:7px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
+.capin{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+/* overlays */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:50;display:flex;justify-content:center;align-items:center;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.viewer{position:relative;height:100%;max-height:900px;aspect-ratio:9/16;max-width:100%;background:#000;overflow:hidden}
+.viewer img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none}
+.vtop{position:absolute;top:0;left:0;right:0;padding:12px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(rgba(0,0,0,.55),transparent)}
+.segs{display:flex;gap:4px}
+.segs i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35);overflow:hidden}
+.segs b{display:block;height:100%;width:0;background:#fff}
+.vwho{display:flex;align-items:center;gap:10px;color:#fff;font-weight:600}
+.vwho button{margin-left:auto;color:#fff;width:36px;height:36px;display:grid;place-items:center}
+.sheet{background:var(--surface);color:var(--ink);width:min(420px,calc(100% - 32px));max-height:80%;border-radius:20px;display:flex;flex-direction:column;overflow:hidden}
+.sheet header{padding:16px 18px 6px;font-family:var(--display);font-weight:800;font-size:20px}
+.sheet .sl{overflow-y:auto;padding:4px 10px}
+.sheet footer{padding:12px 18px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line)}
+.dest{display:flex;align-items:center;gap:12px;width:100%;padding:8px;border-radius:12px;text-align:left}
+.dest:hover{background:var(--surface2)}
+.dest .name{flex:1;font-weight:500}
+.chk{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;color:transparent}
+.dest[aria-pressed="true"] .chk{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:500;z-index:80;font-size:14px}
+.onb{position:fixed;inset:0;z-index:110;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px) }
+.obcard{width:min(420px,100%);text-align:center}
+.obpanel{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.obpanel[hidden]{display:none}
+.obpanel h2{font-family:var(--display);font-size:26px;margin:0;letter-spacing:-.02em}
+.obpanel p{margin:0;color:var(--muted)}
+.obpanel .small{font-size:13px}
+.obpanel .capin{width:100%}
+.obpanel .chips{justify-content:center}
+.obpanel .logo{font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:-.04em;color:var(--accent)}
+#aErr,#notifyMsg{color:var(--snap);min-height:1.2em}
+.lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px);text-align:center}
+.lock .logo{font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:-.04em;color:var(--accent)}
+.lock h2{font-family:var(--display);font-size:24px;margin:0;letter-spacing:-.02em}
+.lock p{margin:0;color:var(--muted);max-width:300px}
+.lock #lockErr{color:var(--snap);min-height:1.2em}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  .rail{order:2;flex-direction:row;justify-content:space-around;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid var(--line)}
+  .logo{display:none}
+  .pane{order:1;border-right:0}
+  .main{order:1;display:none}
+  .app[data-tab="snap"] .pane,.app[data-open="yes"][data-tab="chats"] .pane{display:none}
+  .app[data-tab="snap"] .main,.app[data-open="yes"][data-tab="chats"] .main{display:flex}
+  .app[data-open="yes"][data-tab="chats"] .rail{display:none}
+  .app[data-open="yes"][data-tab="chats"]{grid-template-rows:minmax(0,1fr)}
+  .back{display:grid}
+  .snapview{flex-direction:column;padding:12px;gap:12px}
+  .tools{width:auto;max-height:36%}
+  .toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion:reduce){.segs b{transition:none!important}}
+</style>
+
+<div class="app" id="app" data-tab="chats" data-open="no">
+  <nav class="rail" aria-label="Sections">
+    <div class="logo">blink</div>
+    <button class="nav" data-tab="chats" aria-label="Chats" title="Chats"></button>
+    <button class="nav" data-tab="snap" aria-label="Snap" title="Snap"></button>
+    <button class="nav" data-tab="stories" aria-label="Stories" title="Stories"></button>
+  </nav>
+
+  <section class="pane" aria-label="List">
+    <div class="panehead"><h1 id="ptitle">Chats</h1><button class="ib" id="newsnap" aria-label="New snap" title="New snap"></button></div>
+    <div class="search" id="searchbox"><input id="q" type="text" placeholder="Search chats" autocomplete="off" aria-label="Search chats"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <main class="main">
+    <div class="view" id="chatView" hidden>
+      <div class="chead" id="chead"></div>
+      <div class="msgs" id="msgs" aria-live="polite"></div>
+      <div id="composerWrap"></div>
+    </div>
+
+    <div class="view snapview" id="snapView" hidden>
+      <div class="stage"><canvas id="cv" width="360" height="640" aria-label="Snap preview"></canvas></div>
+      <div class="tools">
+        <div><h3>Photo</h3>
+          <div class="chips"><label class="chip" style="cursor:pointer">Upload photo<input id="file" type="file" accept="image/*" hidden></label>
+          <button class="chip" id="newbg">New backdrop</button></div></div>
+        <div><h3>Filter</h3><div class="chips" id="filters"></div></div>
+        <div><h3>Draw</h3>
+          <div class="chips" style="align-items:center"><button class="chip" id="toolPen" aria-pressed="true">Pen</button><button class="chip" id="toolText" aria-pressed="false">Move caption</button>
+          <span id="swatches" class="chips"></span><button class="chip" id="undo">Undo</button></div></div>
+        <div><h3>Caption</h3><input class="capin" id="capIn" type="text" maxlength="60" placeholder="Add a caption" autocomplete="off"></div>
+        <div><h3>Viewable for</h3><div class="chips" id="timers"></div></div>
+        <button class="btn" id="sendTo">Send to&hellip;</button>
+      </div>
+    </div>
+
+    <div class="hint" id="hint"><div>
+      <h2 id="hintH">Pick a chat</h2><p id="hintP">Messages can vanish, snaps open once, and stories last a day.</p>
+      <button class="btn" id="hintBtn">Take a snap</button></div></div>
+  </main>
+</div>
+
+<div class="ov" id="viewerOv" hidden>
+  <div class="viewer" id="viewer">
+    <img id="vImg" alt="Snap">
+    <div class="vtop"><div class="segs" id="segs"></div>
+      <div class="vwho"><span id="vwho"></span><button id="vclose" aria-label="Close"></button></div></div>
+  </div>
+</div>
+<div class="ov" id="sheetOv" hidden><div class="sheet" id="sheet"></div></div>
+<div class="onb" id="onb" hidden>
+  <div class="obcard">
+    <div id="p1" class="obpanel">
+      <div class="logo">blink</div>
+      <h2>Get the Blink app</h2>
+      <p>Snaps, chats and stories work best in the app. Install it to get alerts when friends send you something.</p>
+      <button class="btn" id="dlIos" disabled title="Available once Blink is on the App Store">Download on the App Store</button>
+      <button class="btn" id="dlAnd" disabled title="Available once Blink is on Google Play">Get it on Google Play</button>
+      <p class="small">Store links appear here once the app is listed.</p>
+      <button class="btn alt" id="p1next">Continue in browser</button>
+    </div>
+    <div id="p2" class="obpanel" hidden>
+      <div class="logo">blink</div>
+      <h2>Turn on notifications</h2>
+      <p>Get alerts for new snaps, messages and replies. You can change this later.</p>
+      <button class="btn" id="notifyBtn">Turn on notifications</button>
+      <button class="btn alt" id="notifySkip">Not now</button>
+      <p id="notifyMsg" role="status"></p>
+    </div>
+    <div id="p3" class="obpanel" hidden>
+      <div class="logo">blink</div>
+      <h2 id="authH">Create your account</h2>
+      <div class="chips" style="justify-content:center"><button class="chip" id="tabUp" aria-pressed="true">Create account</button><button class="chip" id="tabIn" aria-pressed="false">Sign in</button></div>
+      <input class="capin" id="aEmail" type="email" placeholder="Email" autocomplete="email" aria-label="Email">
+      <input class="capin" id="aUser" type="text" placeholder="Username" autocomplete="username" aria-label="Username">
+      <input class="capin" id="aName" type="text" placeholder="Display name" autocomplete="name" aria-label="Display name">
+      <input class="capin" id="aPass" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" aria-label="Password">
+      <button class="btn" id="authGo">Create account</button>
+      <p id="aErr" role="alert"></p>
+    </div>
+  </div>
+</div>
+<div class="lock" id="lock" hidden>
+  <div class="logo">blink</div>
+  <h2 id="lockH">Unlock Blink</h2>
+  <p id="lockP"></p>
+  <input id="pin" class="capin" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" aria-label="Passcode" style="width:180px;text-align:center;letter-spacing:.4em;font-size:22px">
+  <button class="btn" id="pinGo">Continue</button>
+  <button class="btn alt" id="bioGo" hidden>Use Face ID or Touch ID</button>
+  <p id="lockErr" role="alert"></p>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const I={
+ chats:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+ snap:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13.5" r="3.5"/></svg>',
+ stories:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8" stroke-dasharray="3.2 2.6"/><circle cx="12" cy="12" r="3"/></svg>',
+ send:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5l18-8.5L3 3.5v6.6l11 1.9-11 1.9z"/></svg>',
+ clip:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 11l-8.5 8.5a5 5 0 01-7-7L13 4a3.3 3.3 0 014.7 4.7L9.3 17a1.7 1.7 0 01-2.4-2.4L14 7.5"/></svg>',
+ back:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+ close:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+ check:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>'
+};
+const toastEl=$('#toast');let toastT;
+function toast(t){toastEl.textContent=t;toastEl.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>toastEl.hidden=true,2200)}
+const fmt=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const PALS=[['#2b1b5e','#ff7a59','#ffd36e','#3a2a80','#1c1245'],['#0b3a53','#6fd3c0','#fff3b0','#13566f','#0a2c40'],['#5b2a86','#f78fb3','#ffe29a','#7a3da6','#3b1c58'],['#10234a','#4f8cff','#fdf2c4','#1d3a78','#0c1a38'],['#7a1f3d','#ffb26b','#fff0b8','#a22c52','#561429'],['#143d2f','#a6e39a','#fff6c0','#1f5c46','#0c281e']];
+function drawCap(x,t,y){x.font='600 22px Figtree, system-ui, sans-serif';x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,y*640-22,360,46);x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';x.fillText(t,180,y*640+1,336)}
+function scene(seed,cap){
+  const c=document.createElement('canvas');c.width=360;c.height=640;const x=c.getContext('2d');
+  const p=PALS[seed%PALS.length];
+  const g=x.createLinearGradient(0,0,0,640);g.addColorStop(0,p[0]);g.addColorStop(1,p[1]);x.fillStyle=g;x.fillRect(0,0,360,640);
+  x.fillStyle=p[2];x.beginPath();x.arc(80+(seed*53)%200,170+(seed*37)%120,46,0,7);x.fill();
+  for(let L=0;L<3;L++){x.fillStyle=p[3+L%2];x.globalAlpha=.55+L*.2;x.beginPath();x.moveTo(0,640);
+    for(let i=0;i<=360;i+=6)x.lineTo(i,380+L*70+Math.sin(i/55+seed+L*2)*34+Math.cos(i/23+L)*10);
+    x.lineTo(360,640);x.closePath();x.fill()}
+  x.globalAlpha=1;if(cap)drawCap(x,cap,.78);return c}
+const snapURL=(seed,cap)=>scene(seed,cap).toDataURL('image/jpeg',.7);
+
+const NOW=Date.now(),ago=m=>NOW-m*60000;let uid=0;const nid=()=>'m'+(++uid);
+const T=(from,text,m,extra)=>Object.assign({id:nid(),from,type:'text',text,t:ago(m)},extra||{});
+const C=[
+ {id:'saved',name:'Saved Messages',kind:'saved',hue:228,msgs:[T('me','Reminder: bring the tripod on Saturday',1500)]},
+ {id:'maya',name:'Maya Okafor',kind:'dm',hue:350,bot:['ok that is actually genius','send me the rest','lol stop','on my way','wait, what time again?','I\'m in. bringing snacks'],
+  msgs:[T('maya','Did you see the sunset tonight?',42),T('me','Missed it. Send a pic?',40),T('maya','Opening hours changed, studio closes at 9 now',12)],
+  story:[[0,'Golden hour again'],[4,'Studio till late']]},
+ {id:'dev',name:'Dev Raman',kind:'dm',hue:205,bot:['haha yes','give me ten minutes','that works','sending the file now','no way','classic'],
+  msgs:[T('me','Are we still on for the demo?',190),T('dev','Yes. Look what I found on the walk over',8,{})],
+  story:[[1,'Quiet morning']]},
+ {id:'ines',name:'Ines Duarte',kind:'dm',hue:152,bot:['perfect','can we move it to 6?','I love that','be there soon','omg','ok ok ok'],msgs:[T('ines','Thanks for the playlist!',1700)],story:[]},
+ {id:'theo',name:'Theo Lindqvist',kind:'dm',hue:28,bot:['sure thing','one sec','ha, same','ping me later','nice one'],msgs:[T('me','Thinking of making pasta tonight',2800),T('theo','Bring wine',2790)],story:[[3,'Night shift']]},
+ {id:'crew',name:'Weekend Crew',kind:'group',hue:272,members:['Maya','Dev','Ines','Theo'],bot:['I vote the lake','count me in','what are we bringing?','who is driving?','this is the way'],
+  msgs:[T('maya','Plans for Saturday?',300,{who:'Maya'}),T('dev','Lake hike, leave at 9',296,{who:'Dev'}),T('ines','I can bring the speaker',290,{who:'Ines'})],story:[]},
+ {id:'news',name:'Blink Updates',kind:'channel',hue:12,msgs:[T('news','Welcome to Blink. Snaps open once, then they are gone. Messages can vanish on a timer you choose per chat.',2600),T('news','Tip: tap any message to reply, react or save it to Saved Messages.',2500),T('news','Stories stay up for the day. Post one from the Snap tab.',2400)],story:[]}
+];
+C.forEach(c=>{c.unread=0;c.vanish=0;c.seen=false;c.story=(c.story||[]).map(s=>({img:snapURL(s[0],s[1])}))});
+C.find(c=>c.id==='dev').msgs[1]={id:nid(),from:'dev',type:'snap',img:snapURL(2,'Look at this view'),ttl:5,opened:false,t:ago(8)};
+C.find(c=>c.id==='dev').unread=1;C.find(c=>c.id==='maya').unread=1;
+const ME={story:[],seen:true};
+const S={tab:'chats',open:null,sel:null,replyTo:null,q:'',snapTo:[],typing:{}};
+const byId=id=>C.find(c=>c.id===id);
+const hsl=(h)=>'hsl('+(36+(h%16))+' '+(50+(h%20))+'% '+(24+(h%22))+'%)';
+function av(c,size,ring){
+  const inner='<div class="av '+(c.kind==='channel'?'channel':'')+'" style="width:'+size+'px;height:'+size+'px;background:'+hsl(c.hue)+';font-size:'+Math.round(size*.42)+'px">'+(c.kind==='saved'?'&#9733;':esc(c.name[0]))+'</div>';
+  if(!ring)return inner;
+  return '<div class="ring '+(c.story.length&&!c.seen?'new':'')+'"><div class="in">'+inner+'</div></div>'}
+
+/* nav */
+document.querySelectorAll('.nav').forEach(b=>b.innerHTML=I[b.dataset.tab]+(b.dataset.tab==='chats'?'<i class="dot" id="navdot" hidden></i>':''));
+$('#newsnap').innerHTML=I.snap;$('#vclose').innerHTML=I.close;
+function setTab(t){S.tab=t;S.sel=null;view();}
+document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.tab!=='snap')S.snapTo=S.snapTo;setTab(b.dataset.tab)}));
+$('#newsnap').addEventListener('click',()=>setTab('snap'));
+$('#hintBtn').addEventListener('click',()=>setTab('snap'));
+$('#q').addEventListener('input',e=>{S.q=e.target.value.toLowerCase();renderList()});
+
+function view(){
+  const app=$('#app');app.dataset.tab=S.tab;app.dataset.open=(S.open&&S.tab==='chats')?'yes':'no';
+  document.querySelectorAll('.nav').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab===S.tab)));
+  const showChat=S.tab==='chats'&&S.open,showSnap=S.tab==='snap';
+  $('#chatView').hidden=!showChat;$('#snapView').hidden=!showSnap;$('#hint').hidden=showChat||showSnap;
+  $('#ptitle').textContent=S.tab==='stories'?'Stories':'Chats';
+  $('#searchbox').hidden=S.tab==='stories';
+  if(S.tab==='stories'){$('#hintH').textContent='Stories';$('#hintP').textContent='Tap a ring to watch. Your own story shows up at the top once you post.'}
+  else{$('#hintH').textContent='Pick a chat';$('#hintP').textContent='Messages can vanish, snaps open once, and stories last a day.'}
+  if(showSnap&&!ed.ready)edInit();
+  if(showSnap)edRender();
+  renderList();if(showChat){renderHead();renderMsgs();renderComposer()}
+  const un=C.some(c=>c.unread>0);$('#navdot').hidden=!un;
+}
+function last(c){return c.msgs[c.msgs.length-1]}
+function preview(c){const m=last(c);if(!m)return{t:'No messages yet'};
+  if(m.type==='snap')return m.from==='me'?{t:m.opened?'Snap opened':'Snap sent'}:m.opened?{t:'Snap opened'}:{t:'New snap',snap:true};
+  if(m.type==='img')return{t:(m.from==='me'?'You: ':'')+'Photo'};
+  return{t:(m.from==='me'?'You: ':(c.kind==='group'&&m.who?m.who+': ':''))+m.text}}
+function renderList(){
+  const el=$('#list');
+  if(S.tab==='stories'){
+    let h='<div class="sec">My story</div><button class="row" data-act="mystory"><div style="position:relative">'+
+      '<div class="ring '+(ME.story.length?'new':'')+'"><div class="in"><div class="av" style="width:44px;height:44px;background:var(--accent);color:var(--accent-ink);font-size:20px">'+(ME.story.length?ME.story.length:'+')+'</div></div></div></div>'+
+      '<div class="mid"><div class="name">My story</div><div class="prev">'+(ME.story.length?ME.story.length+' post'+(ME.story.length>1?'s':'')+' today':'Tap to post a snap')+'</div></div></button>';
+    const w=C.filter(c=>c.story.length);
+    h+='<div class="sec">Recent</div>';
+    w.sort((a,b)=>(a.seen-b.seen)).forEach(c=>{h+='<button class="row" data-act="story" data-id="'+c.id+'">'+av(c,44,true)+'<div class="mid"><div class="name">'+esc(c.name)+'</div><div class="prev">'+c.story.length+' new</div></div></button>'});
+    el.innerHTML=h;return}
+  const list=C.filter(c=>!S.q||c.name.toLowerCase().includes(S.q));
+  const rest=list.filter(c=>c.id!=='saved').sort((a,b)=>(last(b)?last(b).t:0)-(last(a)?last(a).t:0));
+  const ord=list.filter(c=>c.id==='saved').concat(rest);
+  el.innerHTML=ord.map(c=>{const p=preview(c),m=last(c);
+    return '<button class="row" data-act="open" data-id="'+c.id+'" aria-current="'+(S.open===c.id)+'">'+av(c,48,c.story.length>0&&c.kind==='dm')+
+    '<div class="mid"><div class="t1"><span class="name">'+esc(c.name)+'</span><span class="time">'+(m?fmt(m.t):'')+'</span></div>'+
+    '<div class="t2"><span class="prev '+(p.snap?'snapnew':'')+'">'+esc(p.t)+'</span>'+(c.unread?'<span class="badge '+(p.snap?'sq':'')+'">'+(p.snap?'':c.unread)+'</span>':'')+'</div></div></button>'}).join('')||'<div class="sec">No matches</div>'}
+$('#list').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+  if(a==='open'){openChat(b.dataset.id)}
+  if(a==='story'){playStory(byId(b.dataset.id))}
+  if(a==='mystory'){if(ME.story.length)playMine();else setTab('snap')}
+});
+function openChat(id){S.open=id;S.tab='chats';S.sel=null;S.replyTo=null;const c=byId(id);c.unread=0;view();
+  const m=$('#msgs');m.scrollTop=m.scrollHeight}
+function renderHead(){
+  const c=byId(S.open);
+  const sub=c.kind==='dm'?(S.typing[c.id]?'<span class="typing">typing&hellip;</span>':'<span>active now</span>'):c.kind==='group'?'<span>'+(c.members.length+1)+' members</span>':c.kind==='channel'?'<span>12.4K subscribers</span>':'<span>Notes to self</span>';
+  const vl=['Off','10 s','1 min','1 h'][[0,10,60,3600].indexOf(c.vanish)];
+  $('#chead').innerHTML='<button class="ib back" data-h="back" aria-label="Back">'+I.back+'</button>'+av(c,40,false)+'<div class="who"><b>'+esc(c.name)+'</b>'+sub+'</div>'+
+   (c.kind!=='channel'?'<button class="pill '+(c.vanish?'on':'')+'" data-h="vanish" title="Messages disappear after this long">Vanish: '+vl+'</button>':'')+
+   (c.kind!=='channel'?'<button class="ib" data-h="snap" aria-label="Send a snap">'+I.snap+'</button>':'')}
+$('#chead').addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;const c=byId(S.open);
+  if(b.dataset.h==='back'){S.open=null;S.sel=null;view()}
+  if(b.dataset.h==='vanish'){const o=[0,10,60,3600];c.vanish=o[(o.indexOf(c.vanish)+1)%o.length];renderHead();toast(c.vanish?'New messages vanish after '+['','10 seconds','1 minute','1 hour'][o.indexOf(c.vanish)]:'Vanish turned off')}
+  if(b.dataset.h==='snap'){S.snapTo=[c.id];setTab('snap')}});
+function renderMsgs(keep){
+  const c=byId(S.open);if(!c)return;const el=$('#msgs');const atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;
+  let h='<div class="day">Today</div>';
+  c.msgs.forEach(m=>{
+    const me=m.from==='me',post=c.kind==='channel';
+    let body='';
+    if(m.reply)body+='<div class="quote">'+esc(m.reply)+'</div>';
+    if(m.type==='text')body+=esc(m.text);
+    let core;
+    if(m.type==='snap'){
+      const opened=m.opened;
+      core='<button class="snapcard '+(opened?'opened':'')+(me?' mine':'')+'" data-snap="'+m.id+'"><span class="sq"></span><span><b>'+(me?'Snap':opened?'Snap':'New snap')+'</b><small>'+(me?(opened?'Opened':'Delivered'):opened?'Opened':'Tap to view once &middot; '+(m.ttl?m.ttl+' s':'no limit'))+'</small></span></button>';
+    }else if(m.type==='img'){core='<div class="bub" data-mid="'+m.id+'"><img class="pic" src="'+m.img+'" alt="Photo" data-zoom="'+m.id+'">'+(m.text?'<div>'+esc(m.text)+'</div>':'')+'</div>'}
+    else core='<div class="bub" data-mid="'+m.id+'">'+body+'</div>';
+    h+='<div class="m '+(me?'me':'them')+(post?' post':'')+'">'+
+      (!me&&c.kind==='group'&&m.who?'<span class="sender" style="color:'+hsl((m.who.charCodeAt(0)*37)%360)+'">'+esc(m.who)+'</span>':'')+
+      core+(m.react?'<span class="react">'+m.react+'</span>':'')+
+      '<span class="meta">'+fmt(m.t)+(m.exp?'<span class="v">vanishing</span>':'')+'</span>'+
+      (S.sel===m.id?'<div class="acts"><button data-a="reply">Reply</button><button data-a="r" data-v="&#9829;">&#9829;</button><button data-a="r" data-v="&#128077;">&#128077;</button><button data-a="r" data-v="&#128514;">&#128514;</button><button data-a="save">Save</button>'+(me?'<button data-a="del">Delete</button>':'')+'</div>':'')+'</div>'});
+  if(S.typing[c.id])h+='<div class="m them"><div class="bub" style="color:var(--muted)">&hellip;</div></div>';
+  el.innerHTML=h;if(atBottom||keep===false)el.scrollTop=el.scrollHeight}
+$('#msgs').addEventListener('click',e=>{
+  const c=byId(S.open);
+  const z=e.target.closest('[data-zoom]');if(z){const m=c.msgs.find(x=>x.id===z.dataset.zoom);runViewer([{img:m.img}],{ttl:0,who:'Photo'});return}
+  const sn=e.target.closest('[data-snap]');if(sn){openSnap(c,sn.dataset.snap);return}
+  const a=e.target.closest('[data-a]');
+  if(a){const m=c.msgs.find(x=>x.id===S.sel);if(!m)return;const k=a.dataset.a;
+    if(k==='reply'){S.replyTo=m.type==='text'?m.text:'Photo';renderComposer();$('#ci').focus()}
+    if(k==='r'){m.react=m.react===a.dataset.v?null:a.dataset.v}
+    if(k==='save'){const sv=byId('saved');sv.msgs.push(Object.assign({},m,{id:nid(),from:'me',t:Date.now(),exp:null,react:null,reply:null}));toast('Saved')}
+    if(k==='del'){c.msgs=c.msgs.filter(x=>x.id!==m.id)}
+    S.sel=null;renderMsgs(false);renderList();return}
+  const b=e.target.closest('[data-mid]');if(b){S.sel=S.sel===b.dataset.mid?null:b.dataset.mid;renderMsgs(false)}else if(S.sel){S.sel=null;renderMsgs(false)}});
+function renderComposer(){
+  const c=byId(S.open),w=$('#composerWrap');
+  if(c.kind==='channel'){w.innerHTML='<div class="ro">Only admins can post in this channel</div>';return}
+  const had=document.getElementById('ci'),val=had?had.value:'';
+  w.innerHTML='<form class="composer" id="cf" autocomplete="off">'+(S.replyTo?'<div class="replying"><span>Replying to: '+esc(S.replyTo)+'</span><button type="button" class="ib" style="width:28px;height:28px" data-x="1" aria-label="Cancel reply">'+I.close+'</button></div>':'')+
+   '<div class="cbar"><label class="ib" style="cursor:pointer" title="Send a photo" aria-label="Send a photo">'+I.clip+'<input id="cfile" type="file" accept="image/*" hidden></label>'+
+   '<input id="ci" type="text" placeholder="Message" aria-label="Message"><button class="send" id="cs" aria-label="Send" disabled>'+I.send+'</button></div></form>';
+  const ci=$('#ci');ci.value=val;$('#cs').disabled=!val.trim();
+  ci.addEventListener('input',()=>{$('#cs').disabled=!ci.value.trim()});
+  $('#cf').addEventListener('submit',ev=>{ev.preventDefault();const t=ci.value.trim();if(!t)return;ci.value='';$('#cs').disabled=true;post(c,{type:'text',text:t});});
+  const x=document.querySelector('[data-x]');if(x)x.addEventListener('click',()=>{S.replyTo=null;renderComposer()});
+  $('#cfile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{post(c,{type:'img',img:r.result})};r.readAsDataURL(f)})}
+function post(c,m,from){
+  const msg=Object.assign({id:nid(),from:from||'me',t:Date.now()},m);
+  if(msg.from==='me'&&S.replyTo&&msg.type==='text'){msg.reply=S.replyTo;S.replyTo=null}
+  if(c.vanish)msg.exp=Date.now()+c.vanish*1000;
+  c.msgs.push(msg);
+  if(S.open===c.id&&S.tab==='chats'){renderMsgs(false);if(msg.from==='me')renderComposer();const el=$('#msgs');el.scrollTop=el.scrollHeight}
+  else if(msg.from!=='me')c.unread++;
+  renderList();$('#navdot').hidden=!C.some(x=>x.unread>0);
+  if(msg.from==='me'&&(c.kind==='dm'||c.kind==='group'))botReply(c)}
+function botReply(c){
+  S.typing[c.id]=true;if(S.open===c.id&&S.tab==='chats'){renderHead();renderMsgs()}
+  setTimeout(()=>{delete S.typing[c.id];
+    const r=c.bot[Math.floor(Math.random()*c.bot.length)];
+    const who=c.kind==='group'?c.members[Math.floor(Math.random()*c.members.length)]:undefined;
+    if(c.kind==='dm'&&Math.random()<.25){post(c,{type:'snap',img:snapURL(Math.floor(Math.random()*6),r),ttl:5,opened:false},c.id)}
+    else post(c,{type:'text',text:r,who},c.id);
+    if(S.open===c.id&&S.tab==='chats')renderHead()},1300+Math.random()*1800)}
+
+/* snap opening */
+function openSnap(c,id){
+  const m=c.msgs.find(x=>x.id===id);if(!m)return;
+  if(m.from==='me'||m.opened){toast(m.from==='me'?'Snaps you send can only be opened by the recipient':'That snap has already been opened');return}
+  runViewer([{img:m.img}],{ttl:m.ttl,who:c.name,onEnd:()=>{m.opened=true;m.img=null;renderMsgs(false);renderList()}})}
+let V=null;
+function runViewer(items,opt){V={items,i:0,opt,timer:null};$('#viewerOv').hidden=false;$('#vwho').textContent=opt.who||'';showItem()}
+function showItem(){
+  clearTimeout(V.timer);const it=V.items[V.i];$('#vImg').src=it.img;
+  const sg=$('#segs');sg.innerHTML=V.items.map(()=>'<i><b></b></i>').join('');
+  const bs=sg.querySelectorAll('b');for(let k=0;k<V.i;k++)bs[k].style.width='100%';
+  const d=V.opt.ttl;const b=bs[V.i];
+  if(d>0){requestAnimationFrame(()=>requestAnimationFrame(()=>{b.style.transition='width '+d+'s linear';b.style.width='100%'}));V.timer=setTimeout(nextItem,d*1000)}else b.style.width='100%'}
+function nextItem(){if(!V)return;if(V.i<V.items.length-1){V.i++;showItem()}else closeViewer()}
+function closeViewer(){if(!V)return;clearTimeout(V.timer);const f=V.opt.onEnd;V=null;$('#viewerOv').hidden=true;$('#vImg').removeAttribute('src');if(f)f()}
+$('#viewer').addEventListener('click',e=>{if(e.target.closest('#vclose'))return;const r=$('#viewer').getBoundingClientRect();
+  if(e.clientX-r.left<r.width*.33&&V.i>0){V.i--;showItem()}else nextItem()});
+$('#vclose').addEventListener('click',closeViewer);
+$('#viewerOv').addEventListener('click',e=>{if(e.target.id==='viewerOv')closeViewer()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(V)closeViewer();else if(!$('#sheetOv').hidden)$('#sheetOv').hidden=true}});
+function playStory(c){runViewer(c.story,{ttl:5,who:c.name,onEnd:()=>{c.seen=true;renderList()}})}
+function playMine(){runViewer(ME.story,{ttl:5,who:'My story'})}
+
+/* snap editor */
+const FILTERS={None:'none',Mono:'grayscale(1) contrast(1.1)',Warm:'sepia(.35) saturate(1.4) hue-rotate(-10deg)',Cool:'saturate(1.2) hue-rotate(15deg) brightness(1.05)',Fade:'contrast(.8) brightness(1.15) saturate(.7)',Pop:'contrast(1.3) saturate(1.8)'};
+const COLORS=['#ffffff','#ff4d5e','#ffd23f','#3ddc97','#2f45ff','#111111'];
+const ed={ready:false,base:null,filter:'None',strokes:[],color:'#ffffff',tool:'pen',cap:{text:'',y:.8},ttl:5,seed:0,draw:null,cur:null};
+const cv=$('#cv'),cx=cv.getContext('2d');
+function edInit(){
+  ed.ready=true;ed.draw=document.createElement('canvas');ed.draw.width=360;ed.draw.height=640;
+  ed.base=scene(ed.seed);
+  $('#filters').innerHTML=Object.keys(FILTERS).map(k=>'<button class="chip" data-f="'+k+'" aria-pressed="'+(k===ed.filter)+'">'+k+'</button>').join('');
+  $('#swatches').innerHTML=COLORS.map(c=>'<button class="sw" data-c="'+c+'" style="background:'+c+'" aria-label="Pen color '+c+'" aria-pressed="'+(c===ed.color)+'"></button>').join('');
+  $('#timers').innerHTML=[3,5,10,0].map(t=>'<button class="chip" data-t="'+t+'" aria-pressed="'+(t===ed.ttl)+'">'+(t?t+' s':'No limit')+'</button>').join('')}
+function edRender(){
+  cx.clearRect(0,0,360,640);
+  const src=ed.base,sw=src.width||src.naturalWidth,sh=src.height||src.naturalHeight,s=Math.max(360/sw,640/sh),w=sw*s,h=sh*s;
+  cx.filter=FILTERS[ed.filter]||'none';cx.drawImage(src,(360-w)/2,(640-h)/2,w,h);cx.filter='none';
+  cx.drawImage(ed.draw,0,0);if(ed.cap.text)drawCap(cx,ed.cap.text,ed.cap.y)}
+function redrawStrokes(){const d=ed.draw.getContext('2d');d.clearRect(0,0,360,640);d.lineCap='round';d.lineJoin='round';d.lineWidth=6;
+  ed.strokes.forEach(st=>{d.strokeStyle=st.color;d.beginPath();st.pts.forEach((p,i)=>i?d.lineTo(p[0],p[1]):d.moveTo(p[0],p[1]));if(st.pts.length===1)d.lineTo(st.pts[0][0]+.1,st.pts[0][1]);d.stroke()})}
+function pt(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*360,(e.clientY-r.top)/r.height*640]}
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const p=pt(e);
+  if(ed.tool==='pen'){ed.cur={color:ed.color,pts:[p]};ed.strokes.push(ed.cur);redrawStrokes();edRender()}
+  else{ed.cap.y=Math.min(.95,Math.max(.05,p[1]/640));ed.dragging=true;edRender()}});
+cv.addEventListener('pointermove',e=>{const p=pt(e);
+  if(ed.cur){ed.cur.pts.push(p);redrawStrokes();edRender()}
+  else if(ed.dragging){ed.cap.y=Math.min(.95,Math.max(.05,p[1]/640));edRender()}});
+['pointerup','pointercancel'].forEach(n=>cv.addEventListener(n,()=>{ed.cur=null;ed.dragging=false}));
+$('#filters').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;ed.filter=b.dataset.f;document.querySelectorAll('#filters .chip').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));edRender()});
+$('#swatches').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;ed.color=b.dataset.c;ed.tool='pen';syncTool();document.querySelectorAll('#swatches .sw').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
+$('#timers').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;ed.ttl=+b.dataset.t;document.querySelectorAll('#timers .chip').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
+function syncTool(){$('#toolPen').setAttribute('aria-pressed',String(ed.tool==='pen'));$('#toolText').setAttribute('aria-pressed',String(ed.tool==='text'))}
+$('#toolPen').addEventListener('click',()=>{ed.tool='pen';syncTool()});
+$('#toolText').addEventListener('click',()=>{ed.tool='text';syncTool()});
+$('#undo').addEventListener('click',()=>{ed.strokes.pop();redrawStrokes();edRender()});
+$('#capIn').addEventListener('input',e=>{ed.cap.text=e.target.value;edRender()});
+$('#newbg').addEventListener('click',()=>{ed.seed=(ed.seed+1)%PALS.length;ed.base=scene(ed.seed);edRender()});
+$('#file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const im=new Image();im.onload=()=>{ed.base=im;edRender()};im.src=r.result};r.readAsDataURL(f);e.target.value=''});
+function edReset(){ed.strokes=[];redrawStrokes();ed.cap={text:'',y:.8};$('#capIn').value='';ed.seed=(ed.seed+1)%PALS.length;ed.base=scene(ed.seed);ed.filter='None';ed.tool='pen';syncTool();
+  document.querySelectorAll('#filters .chip').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.f==='None')))}
+
+/* send sheet */
+let pick=[];
+$('#sendTo').addEventListener('click',()=>{pick=S.snapTo.slice();S.snapTo=[];sheet()});
+function sheet(){
+  const dests=[{id:'__story',name:'My story',color:'var(--accent)',init:'+'}].concat(C.filter(c=>c.kind!=='channel').map(c=>({id:c.id,name:c.name,color:hsl(c.hue),init:c.kind==='saved'?'★':c.name[0]})));
+  $('#sheet').innerHTML='<header>Send to</header><div class="sl">'+dests.map(d=>'<button class="dest" data-d="'+d.id+'" aria-pressed="'+pick.includes(d.id)+'"><div class="av" style="width:38px;height:38px;background:'+d.color+';font-size:16px">'+esc(d.init)+'</div><span class="name">'+esc(d.name)+'</span><span class="chk">'+I.check+'</span></button>').join('')+'</div>'+
+   '<footer><button class="btn alt" data-s="cancel">Cancel</button><button class="btn" data-s="go" '+(pick.length?'':'disabled')+'>Send'+(pick.length?' ('+pick.length+')':'')+'</button></footer>';
+  $('#sheetOv').hidden=false}
+$('#sheet').addEventListener('click',e=>{
+  const d=e.target.closest('[data-d]');if(d){const id=d.dataset.d;pick=pick.includes(id)?pick.filter(x=>x!==id):pick.concat(id);sheet();return}
+  const s=e.target.closest('[data-s]');if(!s)return;
+  if(s.dataset.s==='cancel'){$('#sheetOv').hidden=true;return}
+  edRender();const url=cv.toDataURL('image/jpeg',.82);let first=null;
+  pick.forEach(id=>{
+    if(id==='__story'){ME.story.push({img:url});return}
+    const c=byId(id);first=first||c;
+    const m={type:'snap',img:url,ttl:ed.ttl,opened:false};
+    post(c,m);const sent=c.msgs[c.msgs.length-1];
+    if(c.kind==='dm')setTimeout(()=>{sent.opened=true;if(S.open===c.id&&S.tab==='chats')renderMsgs(false)},3500+Math.random()*4000)});
+  $('#sheetOv').hidden=true;toast('Snap sent');pick=[];edReset();
+  if(first){S.open=first.id;first.unread=0;setTab('chats')}else setTab('stories')});
+$('#sheetOv').addEventListener('click',e=>{if(e.target.id==='sheetOv')$('#sheetOv').hidden=true});
+
+/* vanish timer */
+setInterval(()=>{const now=Date.now();let changed=false,openChanged=false;
+  C.forEach(c=>{const n=c.msgs.length;c.msgs=c.msgs.filter(m=>!m.exp||m.exp>now);if(c.msgs.length!==n){changed=true;if(S.open===c.id)openChanged=true}});
+  if(changed){renderList();if(openChanged&&S.tab==='chats')renderMsgs(false)}},1000);
+
+/* app lock: passcode, plus device biometrics via WebAuthn when the viewer's device offers them.
+   The page only learns whether the device check succeeded; no face data is read by the page. */
+const lock=$('#lock'),pinIn=$('#pin'),lockErr=$('#lockErr');
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+let lockMode='unlock';
+async function bioAvailable(){try{return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
+async function bioEnroll(){
+  const c=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Blink'},
+    user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'blink-user',displayName:'Blink user'},
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},timeout:60000}});
+  store.set('blink.cred',b64(c.rawId));}
+async function bioVerify(){
+  const id=store.get('blink.cred');if(!id)return false;
+  const got=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
+    allowCredentials:[{type:'public-key',id:unb64(id)}],userVerification:'required',timeout:60000}});
+  return !!got}
+function showLock(mode){
+  lockMode=mode;lock.hidden=false;pinIn.value='';lockErr.textContent='';
+  $('#lockH').textContent=mode==='setup'?'Set a passcode':'Unlock Blink';
+  $('#lockP').textContent=mode==='setup'?'Four digits. Blink asks for it when you open or return to the app.':'Enter your passcode to continue.';
+  $('#pinGo').textContent=mode==='setup'?'Save passcode':'Unlock';
+  pinIn.focus()}
+async function refreshBioButton(){$('#bioGo').hidden=!(lockMode==='unlock'&&store.get('blink.cred')&&await bioAvailable())}
+async function tryBio(){
+  try{if(await bioVerify())lock.hidden=true;else lockErr.textContent='Not recognized. Use your passcode.'}
+  catch(e){lockErr.textContent='Biometrics were cancelled or unavailable. Use your passcode.'}}
+$('#pinGo').addEventListener('click',async()=>{
+  const v=pinIn.value.trim();
+  if(!/^\d{4}$/.test(v)){lockErr.textContent='Enter four digits.';return}
+  if(lockMode==='setup'){
+    store.set('blink.pin',v);
+    if(await bioAvailable()){try{await bioEnroll()}catch(e){}}
+    lock.hidden=true;toast('Passcode set')}
+  else if(v===store.get('blink.pin')){lock.hidden=true}
+  else{lockErr.textContent='Wrong passcode.';pinIn.value=''}});
+pinIn.addEventListener('keydown',e=>{if(e.key==='Enter')$('#pinGo').click()});
+$('#bioGo').addEventListener('click',tryBio);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&store.get('blink.pin')){showLock('unlock');refreshBioButton()}});
+/* onboarding and accounts. Accounts live in the artifact's shared database (accounts/<username>),
+   with passwords stored as PBKDF2 hashes. Only viewers who can write shared data can create accounts. */
+const onb=$('#onb'),aErr=$('#aErr');
+let authMode='up';
+const obShow=n=>{['#p1','#p2','#p3'].forEach((s,i)=>{$(s).hidden=i!==n-1})};
+function setAuth(m){authMode=m;
+  $('#tabUp').setAttribute('aria-pressed',String(m==='up'));$('#tabIn').setAttribute('aria-pressed',String(m==='in'));
+  $('#aName').hidden=m==='in';$('#aUser').hidden=m==='in';$('#authH').textContent=m==='up'?'Create your account':'Sign in';
+  $('#authGo').textContent=m==='up'?'Create account':'Sign in';aErr.textContent=''}
+$('#tabUp').addEventListener('click',()=>setAuth('up'));
+$('#tabIn').addEventListener('click',()=>setAuth('in'));
+$('#p1next').addEventListener('click',()=>{store.set('blink.seenApp','1');obShow(2)});
+$('#notifySkip').addEventListener('click',()=>obShow(3));
+$('#notifyBtn').addEventListener('click',async()=>{let msg;
+  try{const r=await Notification.requestPermission();
+    msg=r==='granted'?'Notifications are on.':'Notifications are off. You can turn them on in your browser settings.'}
+  catch(e){msg='Notifications are not available in this view.'}
+  $('#notifyMsg').textContent=msg;setTimeout(()=>obShow(3),1000)});
+async function hashPw(pw,saltB64){
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:unb64(saltB64),iterations:150000,hash:'SHA-256'},key,256);
+  return b64(bits)}
+const SB_URL='https://yjouaysczttqbytksejq.supabase.co',SB_KEY='sb_publishable_ScNFLwg_u5n0DOlyCaZaGQ_mQQaV3pR';
+const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY):null;
+function afterAuth(){
+  if(store.get('blink.pin')){showLock('unlock');refreshBioButton().then(()=>{if(!$('#bioGo').hidden)tryBio()})}
+  else showLock('setup')}
+$('#authGo').addEventListener('click',async()=>{
+  const email=$('#aEmail').value.trim().toLowerCase(),pw=$('#aPass').value,u=$('#aUser').value.trim().toLowerCase(),dn=$('#aName').value.trim();
+  aErr.textContent='';
+  if(!sb){aErr.textContent='Accounts are unavailable right now. Check your connection and reload.';return}
+  if(!/^\S+@\S+\.\S+$/.test(email)){aErr.textContent='Enter a valid email address.';return}
+  if(pw.length<8){aErr.textContent='Password must be at least 8 characters.';return}
+  $('#authGo').disabled=true;
+  try{
+    if(authMode==='up'){
+      if(!/^[a-z0-9_]{3,20}$/.test(u)){aErr.textContent='Username: 3 to 20 letters, numbers or underscores.';return}
+      if(!dn){aErr.textContent='Add a display name.';return}
+      const {data:free,error:e1}=await sb.rpc('username_available',{u});
+      if(e1)throw e1;
+      if(!free){aErr.textContent='That username is taken.';return}
+      const {data,error}=await sb.auth.signUp({email,password:pw,options:{data:{username:u,display_name:dn}}});
+      if(error)throw error;
+      if(!data.session){aErr.textContent='Check your email to confirm your account, then sign in.';setAuth('in');return}
+    }else{
+      const {error}=await sb.auth.signInWithPassword({email,password:pw});
+      if(error)throw error;
+    }
+    onb.hidden=true;afterAuth();
+  }catch(e){
+    const m=(e&&e.message)||'';
+    aErr.textContent=/already registered/i.test(m)?'That email already has an account. Sign in instead.'
+      :/invalid login credentials/i.test(m)?'Wrong email or password.'
+      :/email not confirmed/i.test(m)?'Confirm your email first, then sign in.'
+      :/rate limit|too many/i.test(m)?'Too many tries. Wait a moment and try again.'
+      :'Something went wrong. Try again.'
+  }finally{$('#authGo').disabled=false}
+});
+$('#aPass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#authGo').click()});
+if(!store.get('blink.seenApp'))obShow(1);else obShow(3);
+setAuth('up');
+if(sb){sb.auth.getSession().then(({data})=>{if(data.session){onb.hidden=true;afterAuth()}else onb.hidden=false})}
+else onb.hidden=false;
+
+if(window.innerWidth>=820)S.open='maya';
+byId('maya').unread=S.open==='maya'?0:1;
+view();
+})();
+</script>
